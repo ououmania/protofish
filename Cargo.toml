@@ -9,12 +9,12 @@ Protofish is a decoder focused on decoding arbitrary protocol buffer messages
 with error recovery.
 """
 documentation = "https://docs.rs/protofish"
-repository = "https://github.com/Rantanen/protofish"
+repository = "https://github.com/ououmania/protofish"
 readme = "README.md"
-
 
 [dependencies]
 pest = "2.1"
 pest_derive = "2.1"
 snafu = "0.6"
-bytes = "1.0"
+bytes = { version= "1.0", features = [ "serde" ] }
+serde = { version = "*", optional = true }

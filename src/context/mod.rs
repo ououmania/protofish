@@ -4,12 +4,18 @@ use bytes::Bytes;
 use snafu::{ResultExt, Snafu};
 use std::collections::{BTreeMap, HashMap};
 
+#[cfg(feature = "serde")]
+use serde::ser::SerializeMap;
+#[cfg(feature = "serde")]
+use serde::{Serialize, Serializer};
+
 mod api;
 mod builder;
 mod modify_api;
 mod parse;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize))]
 struct InternalRef(usize);
 
 /// A reference to a message. Can be resolved to `MessageInfo` through a `Context`.
@@ -28,8 +34,9 @@ pub struct PackageRef(InternalRef);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ServiceRef(InternalRef);
 
-/// A reference to a service.
+/// A reference to a oneof.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize))]
 pub struct OneofRef(InternalRef);
 
 /// Protofish error type.
@@ -285,6 +292,7 @@ pub struct MessageField
 
 /// Defines the multiplicity of the field values.
 #[derive(Debug, PartialEq, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize))]
 pub enum Multiplicity
 {
     /// Field is not repeated.
@@ -302,6 +310,7 @@ pub enum Multiplicity
 
 /// Message `oneof` details.
 #[derive(Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize))]
 #[non_exhaustive]
 pub struct Oneof
 {
@@ -314,11 +323,18 @@ pub struct Oneof
     /// Field numbers of the fields contained in the `oneof`.
     pub fields: Vec<u64>,
 
-    /// Options.
+    /// options.
+    #[cfg(feature = "serde")]
+    #[serde(serialize_with = "serialize_proto_options")]
+    pub options: Vec<ProtoOption>,
+
+    /// options.
+    #[cfg(not(feature = "serde"))]
     pub options: Vec<ProtoOption>,
 }
 
 /// Enum field details.
+#[cfg_attr(feature = "serde", derive(Serialize))]
 #[derive(Debug, PartialEq, Clone)]
 #[non_exhaustive]
 pub struct EnumField
@@ -329,7 +345,13 @@ pub struct EnumField
     /// Enum field value.
     pub value: i64,
 
-    /// Options.
+    /// options.
+    #[cfg(feature = "serde")]
+    #[serde(serialize_with = "serialize_proto_options")]
+    pub options: Vec<ProtoOption>,
+
+    /// options.
+    #[cfg(not(feature = "serde"))]
     pub options: Vec<ProtoOption>,
 }
 
@@ -477,6 +499,36 @@ pub enum Constant
 
     /// A boolean constant.
     Bool(bool),
+}
+
+#[cfg(feature = "serde")]
+impl Serialize for Constant
+{
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            Constant::Ident(s) => serializer.serialize_str(s),
+            Constant::Integer(i) => serializer.serialize_i64(*i),
+            Constant::Float(f) => serializer.serialize_f64(*f),
+            Constant::String(s) => serializer.serialize_bytes(s),
+            Constant::Bool(b) => serializer.serialize_bool(*b),
+        }
+    }
+}
+
+#[cfg(feature = "serde")]
+fn serialize_proto_options<S>(v: &Vec<ProtoOption>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let mut map = serializer.serialize_map(Some(v.len()))?;
+    for e in v {
+        let name = e.name.trim_matches(&['(', ')']);
+        map.serialize_entry(name, &e.value)?;
+    }
+    map.end()
 }
 
 #[cfg(test)]

@@ -7,6 +7,13 @@ fn parse()
 
     let context = Context::parse(&[r#"
       syntax = "proto3";
+
+      import "google/protobuf/descriptor.proto";
+
+      extend google.protobuf.EnumValueOptions {
+          bool is_debug_log = 66002;
+      }
+
       message Message {
           string s = 1;
           repeated bytes b = 2;

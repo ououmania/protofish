@@ -52,6 +52,7 @@ impl PackageBuilder
                             Some(inner.into_inner().next().unwrap().as_str().to_string())
                     }
                     Rule::option => {}
+                    Rule::extension => {}
                     Rule::EOI => {}
                     r => unreachable!("{:?}: {:?}", r, inner),
                 }
@@ -184,11 +185,11 @@ impl FieldBuilder
         let mut inner = p.into_inner();
         let multiplicity = match inner.next().unwrap().into_inner().next() {
             Some(t) => {
-                let multiplicity = t.into_inner().next().unwrap().as_rule();
-                match multiplicity {
+                let multi_rule = t.into_inner().next().unwrap().as_rule();
+                match multi_rule {
                     Rule::optional => Multiplicity::Optional,
                     Rule::repeated => Multiplicity::Repeated,
-                    r => unreachable!("{:?}: {:?}", r, multiplicity),
+                    r => unreachable!("{:?}: {:?}", r, multi_rule),
                 }
             }
             None => Multiplicity::Single,

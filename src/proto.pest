@@ -93,5 +93,9 @@ opt_stream = { stream? }
 rpcParam = { opt_stream ~ messageType }
 rpc = { "rpc" ~ rpcName ~ "(" ~ rpcParam ~ ")" ~ "returns" ~ "(" ~ rpcParam ~ ")" ~ (( "{" ~ ( option | emptyStatement )* ~ "}" ) | ";") }
 
-proto = { SOI ~ BOM? ~ syntax ~ ( import | package | option | topLevelDef | emptyStatement )* ~ EOI }
+extension = { "extend" ~ extensionName ~ extensionBody }
+extensionName = { "google.protobuf." ~ ident }
+extensionBody = { "{" ~ ( field | option )* ~ "}" }
+
+proto = { SOI ~ BOM? ~ syntax ~ ( import | package | option | topLevelDef | emptyStatement | extension )* ~ EOI }
 topLevelDef = { message | enum_ | service }

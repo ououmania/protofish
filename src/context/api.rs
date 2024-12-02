@@ -149,6 +149,14 @@ impl EnumInfo
     {
         self.fields_by_value.get(&value)
     }
+
+    /// Get a field by its name.
+    pub fn get_field_by_name(&self, name: &str) -> Option<&EnumField>
+    {
+        self.fields_by_name
+            .get(name)
+            .and_then(|id| self.get_field_by_value(*id))
+    }
 }
 
 impl Service
