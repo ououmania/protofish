@@ -281,6 +281,8 @@ impl EnumField
             name,
             value,
             options: vec![],
+            leading_comment: None,
+            trailing_comment: None,
         }
     }
 }

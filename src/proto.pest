@@ -81,7 +81,7 @@ fieldNames = { fieldName ~ ( "," ~ fieldName )* }
 
 enum_ = { "enum" ~ enumName ~ enumBody }
 enumBody = { "{" ~ ( option | enumField | emptyStatement )* ~ "}" }
-enumField = { ident ~ "=" ~ intLit ~ ( "[" ~ enumValueOption ~ ( "," ~ enumValueOption )* ~ "]" )* ~ ";" }
+enumField = { ident ~ "=" ~ intLit ~ ( "[" ~ enumValueOption ~ ( "," ~ enumValueOption )* ~ "]" )* ~ (COMMENT)? ~ ";" }
 enumValueOption = { optionName ~ "=" ~ constant }
 
 message = { "message" ~ messageName ~ messageBody }

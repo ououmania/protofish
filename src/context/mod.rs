@@ -335,7 +335,7 @@ pub struct Oneof
 
 /// Enum field details.
 #[cfg_attr(feature = "serde", derive(Serialize))]
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Default, PartialEq, Clone)]
 #[non_exhaustive]
 pub struct EnumField
 {
@@ -353,6 +353,12 @@ pub struct EnumField
     /// options.
     #[cfg(not(feature = "serde"))]
     pub options: Vec<ProtoOption>,
+
+    /// Comment above the field
+    pub leading_comment: Option<String>,
+
+    /// Comment after the field
+    pub trailing_comment: Option<String>,
 }
 
 /// Field value types.

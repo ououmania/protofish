@@ -137,6 +137,8 @@ impl EnumBuilder
                         name: inner.next().unwrap().as_str().to_string(),
                         value: parse_int_literal(inner.next().unwrap()),
                         options: ProtoOption::parse_options(inner),
+                        leading_comment: None,
+                        trailing_comment: None,
                     })
                 }
                 Rule::option => options.push(ProtoOption::parse(p)),
@@ -645,7 +647,7 @@ mod test
                 }
 
                 enum Enum {
-                    value = 1 [ (a.b).c = 1, o2 = 2 ];
+                    value = 1 [ (a.b).c = 1, o2 = 2 ]; // value
                     option eOption = "banana";
                 }
 
