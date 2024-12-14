@@ -3,14 +3,32 @@ use super::*;
 impl Context
 {
     /// Create a new context.
-    pub fn new() -> Self
+    pub fn new(packages: Vec<Package>, types: Vec<TypeInfo>, services: Vec<Service>) -> Self
     {
+        let types_by_name = types
+            .iter()
+            .enumerate()
+            .map(|(idx, t)| (t.full_name().to_string(), idx))
+            .collect();
+        let message_indices = types
+            .iter()
+            .enumerate()
+            .filter(|(_, t)| matches!(t, TypeInfo::Message(_)))
+            .map(|(idx, _)| idx)
+            .collect();
+        let services_by_name = services
+            .iter()
+            .enumerate()
+            .map(|(idx, t)| (t.full_name.clone(), idx))
+            .collect();
+
         Context {
-            packages: Default::default(),
-            types: Default::default(),
-            types_by_name: Default::default(),
-            services: Default::default(),
-            services_by_name: Default::default(),
+            packages,
+            types,
+            types_by_name,
+            services,
+            services_by_name,
+            message_indices,
         }
     }
 
@@ -79,6 +97,18 @@ impl Context
             .get(full_name)
             .map(|idx| &self.services[*idx])
     }
+
+    /// Get all the messages
+    pub fn messages(&self) -> Vec<&MessageInfo>
+    {
+        self.message_indices
+            .iter()
+            .map(|idx| match &self.types[*idx] {
+                TypeInfo::Message(m) => m,
+                _ => panic!("Not message"),
+            })
+            .collect()
+    }
 }
 
 impl TypeInfo
@@ -123,6 +153,12 @@ impl MessageInfo
     pub fn get_field(&self, number: u64) -> Option<&MessageField>
     {
         self.fields.get(&number)
+    }
+
+    /// Get the count of the fields
+    pub fn get_field_count(&self) -> usize
+    {
+        self.fields.len()
     }
 
     /// Get a field by its name.

@@ -141,17 +141,6 @@ impl ContextBuilder
             .map(|s| self.take_service(&s.idx_path).build(s, &cache))
             .collect::<Result<_, _>>()?;
 
-        let types_by_name = types
-            .iter()
-            .enumerate()
-            .map(|(idx, t)| (t.full_name().to_string(), idx))
-            .collect();
-        let services_by_name = services
-            .iter()
-            .enumerate()
-            .map(|(idx, t)| (t.full_name.clone(), idx))
-            .collect();
-
         let mut packages: Vec<Package> = self
             .packages
             .into_iter()
@@ -185,13 +174,7 @@ impl ContextBuilder
             }
         }
 
-        Ok(Context {
-            packages,
-            types,
-            types_by_name,
-            services,
-            services_by_name,
-        })
+        Ok(Context::new(packages, types, services))
     }
 
     fn take_type(&mut self, idx: &[usize]) -> ProtobufTypeBuilder
@@ -413,6 +396,7 @@ impl MessageBuilder
             self_ref: MessageRef(InternalRef(self_data.final_idx)),
             inner_types,
             oneofs,
+            options: self.options,
             fields,
             fields_by_name,
         })

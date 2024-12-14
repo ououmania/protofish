@@ -138,6 +138,7 @@ impl MessageInfo
             self_ref: MessageRef(InternalRef(0)),
             oneofs: vec![],
             inner_types: vec![],
+            options: vec![],
 
             fields: BTreeMap::new(),
             fields_by_name: BTreeMap::new(),

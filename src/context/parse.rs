@@ -102,7 +102,7 @@ impl MessageBuilder
                 }
                 Rule::option => options.push(ProtoOption::parse(p)),
                 Rule::oneof => oneofs.push(OneofBuilder::parse(p)),
-                Rule::mapField => unimplemented!("Maps are not supported"),
+                Rule::mapField => {}
                 Rule::reserved => {} // We don't need to care about reserved field numbers.
                 Rule::emptyStatement => {}
                 r => unreachable!("{:?}: {:?}", r, p),

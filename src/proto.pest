@@ -51,8 +51,8 @@ syntax = { "syntax" ~ "=" ~ quote ~ "proto3" ~ quote ~ ";" }
 import = { "import" ~ ( "weak" | "public" )? ~ strLit ~ ";" }
 package = { "package" ~ fullIdent ~ ";" }
 
-option = { "option" ~ optionName ~ "=" ~ constant ~ ";" }
-optionName = { ( ident | "(" ~ fullIdent ~ ")" ) ~ ( "." ~ ident )* }
+option = { "option" ~ "("? ~ optionName ~ ")"? ~ "=" ~ constant ~ ";" }
+optionName = { ( ident | fullIdent ) ~ ( "." ~ ident )* }
 
 type_ = { "double" | "float" | "int32" | "int64" | "uint32" | "uint64"
     | "sint32" | "sint64" | "fixed32" | "fixed64" | "sfixed32" | "sfixed64"
@@ -65,7 +65,7 @@ one_multiplicity = { repeated | optional }
 multiplicity = { one_multiplicity? }
 field = { multiplicity ~ type_ ~ fieldName ~ "=" ~ fieldNumber ~ ( "[" ~ fieldOptions ~ "]" )? ~ ";" }
 fieldOptions = { fieldOption ~ ( "," ~ fieldOption )* }
-fieldOption = { optionName ~ "=" ~ constant }
+fieldOption = { "(" ~ optionName ~ ")" ~ "=" ~ constant }
 
 oneof = { "oneof" ~ oneofName ~ "{" ~ ( option | oneofField | emptyStatement )* ~ "}" }
 oneofField = { type_ ~ fieldName ~ "=" ~ fieldNumber ~ ( "[" ~ fieldOptions ~ "]" )? ~ ";" }
@@ -82,10 +82,10 @@ fieldNames = { fieldName ~ ( "," ~ fieldName )* }
 enum_ = { "enum" ~ enumName ~ enumBody }
 enumBody = { "{" ~ ( option | enumField | emptyStatement )* ~ "}" }
 enumField = { ident ~ "=" ~ intLit ~ ( "[" ~ enumValueOption ~ ( "," ~ enumValueOption )* ~ "]" )* ~ (COMMENT)? ~ ";" }
-enumValueOption = { optionName ~ "=" ~ constant }
+enumValueOption = { "(" ~ optionName ~ ")" ~ "=" ~ constant }
 
 message = { "message" ~ messageName ~ messageBody }
-messageBody = { "{" ~ ( field | enum_ | message | option | oneof | mapField | reserved | emptyStatement )* ~ "}" }
+messageBody = { "{" ~ ( field | enum_ | message | option | oneof | mapField | reserved | emptyStatement )* ~ "}" ~ (";")* }
 
 service = { "service" ~ serviceName ~ "{" ~ ( option | rpc | emptyStatement )* ~ "}" }
 stream = { "stream" }

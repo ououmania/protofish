@@ -176,6 +176,7 @@ pub struct Context
     types_by_name: HashMap<String, usize>,
     services: Vec<Service>,
     services_by_name: HashMap<String, usize>,
+    message_indices: Vec<usize>,
 }
 
 /// Package details.
@@ -228,6 +229,9 @@ pub struct MessageInfo
 
     /// References to the inner types defined within this message.
     pub inner_types: Vec<TypeRef>,
+
+    /// Options of this message.
+    pub options: Vec<ProtoOption>,
 
     // Using BTreeMap here to ensure ordering.
     fields: BTreeMap<u64, MessageField>,
@@ -505,6 +509,18 @@ pub enum Constant
 
     /// A boolean constant.
     Bool(bool),
+}
+
+impl Constant
+{
+    /// Assert this constant is a valid utf8 string
+    pub fn as_string(&self) -> &str
+    {
+        match self {
+            Constant::String(s) => std::str::from_utf8(s).expect("not utf8 string"),
+            _ => panic!("{:?} not string type", self),
+        }
+    }
 }
 
 #[cfg(feature = "serde")]
