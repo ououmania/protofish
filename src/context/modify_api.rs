@@ -218,6 +218,7 @@ impl MessageField
             multiplicity: Multiplicity::Single,
             options: vec![],
             oneof: None,
+            comment: Comment::default(),
         }
     }
 }
@@ -282,8 +283,7 @@ impl EnumField
             name,
             value,
             options: vec![],
-            leading_comment: None,
-            trailing_comment: None,
+            comment: Comment::default(),
         }
     }
 }

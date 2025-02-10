@@ -164,6 +164,17 @@ pub enum ItemType
     Service,
 }
 
+/// Protobuf comments on an item.
+#[derive(Clone, Default, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize))]
+pub struct Comment
+{
+    /// Comments above the field, there maybe multiple lines.
+    leading: Option<String>,
+    /// Comment after the field on the same line.
+    trailing: Option<String>,
+}
+
 /// Protofish decoding context.
 ///
 /// Contains type information parsed from the files. Required for decoding
@@ -292,6 +303,9 @@ pub struct MessageField
 
     /// Index to the ´oneof` structure in the parent type if this field is part of a `oneof`.
     pub oneof: Option<OneofRef>,
+
+    /// Comment on this field.
+    pub comment: Comment,
 }
 
 /// Defines the multiplicity of the field values.
@@ -359,10 +373,7 @@ pub struct EnumField
     pub options: Vec<ProtoOption>,
 
     /// Comment above the field
-    pub leading_comment: Option<String>,
-
-    /// Comment after the field
-    pub trailing_comment: Option<String>,
+    pub comment: Comment,
 }
 
 /// Field value types.

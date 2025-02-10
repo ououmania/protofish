@@ -4,6 +4,31 @@ use std::path::PathBuf;
 
 use super::*;
 
+#[derive(Clone, Debug, Default, PartialEq)]
+pub(crate) struct Location
+{
+    pub(crate) start: usize,
+    pub(crate) end: usize,
+}
+
+#[derive(Clone, Debug, Default, PartialEq)]
+pub(crate) struct LineComment
+{
+    pub(crate) offset: usize,
+    pub(crate) line: usize,
+    pub(crate) text: String,
+}
+
+#[derive(Clone, Debug, Default, PartialEq)]
+pub(crate) struct ProtoComment
+{
+    pub(crate) text: String,
+    pub(crate) start: usize,
+    pub(crate) end: usize,
+    pub(crate) line: usize,
+    pub(crate) col: usize,
+}
+
 #[derive(Default)]
 pub(crate) struct ContextBuilder
 {
@@ -17,6 +42,14 @@ pub(crate) struct PackageBuilder
     pub(crate) name: Option<String>,
     pub(crate) imported_types: Vec<String>,
     pub(crate) types: Vec<ProtobufItemBuilder>,
+    pub(crate) comments_by_line: Vec<LineComment>,
+}
+
+#[derive(Default, Debug, PartialEq, Clone)]
+pub struct ProtobufItemComment
+{
+    pub leading: Vec<ProtoComment>,
+    pub trailing: Vec<ProtoComment>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -41,6 +74,8 @@ pub(crate) struct MessageBuilder
     pub(crate) oneofs: Vec<OneofBuilder>,
     pub(crate) inner_types: Vec<InnerTypeBuilder>,
     pub(crate) options: Vec<ProtoOption>,
+    pub(crate) location: Location,
+    pub(crate) comment: ProtobufItemComment,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -56,6 +91,8 @@ pub(crate) struct EnumBuilder
     pub(crate) name: String,
     pub(crate) fields: Vec<EnumField>,
     pub(crate) options: Vec<ProtoOption>,
+    pub(crate) location: Location,
+    pub(crate) comment: ProtobufItemComment,
 }
 
 #[derive(Default, Debug, PartialEq)]
@@ -74,6 +111,7 @@ pub(crate) struct FieldBuilder
     pub(crate) name: String,
     pub(crate) number: u64,
     pub(crate) options: Vec<ProtoOption>,
+    pub(crate) location: Location,
 }
 
 #[derive(Default, Debug, PartialEq, Clone)]
@@ -105,6 +143,11 @@ pub(crate) struct RpcArgBuilder
 {
     pub(crate) stream: bool,
     pub(crate) message: String,
+}
+
+pub(crate) trait CommentCollector
+{
+    fn collect(&mut self, c: ProtoComment);
 }
 
 impl ContextBuilder
@@ -242,6 +285,24 @@ impl PackageBuilder
     }
 }
 
+impl CommentCollector for PackageBuilder
+{
+    fn collect(&mut self, c: ProtoComment)
+    {
+        let pos = self
+            .comments_by_line
+            .partition_point(|x| (x.line < c.line) || (x.offset < c.start));
+        self.comments_by_line.insert(
+            pos,
+            LineComment {
+                line: c.line,
+                offset: c.start,
+                text: c.text,
+            },
+        )
+    }
+}
+
 impl ProtobufTypeBuilder
 {
     fn build(self, self_data: &CacheData, cache: &BuildCache) -> Result<TypeInfo, ParseError>
@@ -316,6 +377,7 @@ impl MessageBuilder
                     .iter()
                     .map(InnerTypeBuilder::clone_name)
                     .collect(),
+                ..MessageBuilder::default() // TODO
             })
         } else {
             self.inner_types[idx[0]].take_type(&idx[1..])
@@ -437,6 +499,7 @@ impl FieldBuilder
             field_type: self.field_type.build(self_data, cache)?,
             oneof,
             options: self.options,
+            comment: Comment::default(),
         })
     }
 }

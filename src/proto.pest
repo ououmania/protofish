@@ -1,6 +1,9 @@
 WHITESPACE = _{ " " | "\t" | "\n" | "\r" }
-COMMENT = _{ "//" ~ (!"\n" ~ ANY)* | "/*" ~ (!"*/" ~ ANY)* ~ "*/" }
+COMMENT = { "//" ~ (!"\n" ~ ANY)* | "/*" ~ (!"*/" ~ ANY)* ~ "*/" }
 BOM = _{ "\u{feff}" }
+
+LEADING_COMMENT = @{ "//" ~ (!"\n" ~ ANY)* | "/*" ~ (!"*/" ~ ANY)* ~ "*/" }
+TRAILING_COMMENT = @{ "//" ~ (!"\n" ~ ANY)* }
 
 letter = { 'A'..'Z' | 'a'..'z' }
 decimalDigit = { '0'..'9' }
@@ -63,7 +66,7 @@ optional = { "optional" }
 repeated = { "repeated" }
 one_multiplicity = { repeated | optional }
 multiplicity = { one_multiplicity? }
-field = { multiplicity ~ type_ ~ fieldName ~ "=" ~ fieldNumber ~ ( "[" ~ fieldOptions ~ "]" )? ~ ";" }
+field = { multiplicity ~ type_ ~ fieldName ~ "=" ~ fieldNumber ~ ( "[" ~ fieldOptions ~ "]" )? ~ ";" ~ TRAILING_COMMENT? }
 fieldOptions = { fieldOption ~ ( "," ~ fieldOption )* }
 fieldOption = { "(" ~ optionName ~ ")" ~ "=" ~ constant }
 
@@ -81,8 +84,8 @@ fieldNames = { fieldName ~ ( "," ~ fieldName )* }
 
 enum_ = { "enum" ~ enumName ~ enumBody }
 enumBody = { "{" ~ ( option | enumField | emptyStatement )* ~ "}" }
-enumField = { ident ~ "=" ~ intLit ~ ( "[" ~ enumValueOption ~ ( "," ~ enumValueOption )* ~ "]" )* ~ (COMMENT)? ~ ";" }
-enumValueOption = { "(" ~ optionName ~ ")" ~ "=" ~ constant }
+enumField = { ident ~ "=" ~ intLit ~ ( "[" ~ enumValueOption ~ ( "," ~ enumValueOption )* ~ "]" )? ~ ";"  ~ TRAILING_COMMENT? }
+enumValueOption = { "("? ~ optionName ~ ")"? ~ "=" ~ constant }
 
 message = { "message" ~ messageName ~ messageBody }
 messageBody = { "{" ~ ( field | enum_ | message | option | oneof | mapField | reserved | emptyStatement )* ~ "}" ~ (";")* }

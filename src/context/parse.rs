@@ -6,6 +6,7 @@ use pest::{
 
 use super::builder::*;
 use super::*;
+use log::debug;
 
 #[derive(pest_derive::Parser)]
 #[grammar = "proto.pest"]
@@ -37,15 +38,17 @@ impl PackageBuilder
         let pairs = ProtoParser::parse(Rule::proto, input)
             .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
             .context(SyntaxError {})?;
-
-        let mut current_package = PackageBuilder::default();
+        let mut current_package = PackageBuilder {
+            ..Default::default()
+        };
         for pair in pairs {
             for inner in pair.into_inner() {
                 match inner.as_rule() {
                     Rule::syntax => {}
-                    Rule::topLevelDef => current_package
-                        .types
-                        .push(ProtobufItemBuilder::parse(inner)),
+                    Rule::topLevelDef => {
+                        let item = ProtobufItemBuilder::parse(inner, &mut current_package);
+                        current_package.types.push(item);
+                    }
                     Rule::import => {}
                     Rule::package => {
                         current_package.name =
@@ -54,6 +57,10 @@ impl PackageBuilder
                     Rule::option => {}
                     Rule::extension => {}
                     Rule::EOI => {}
+                    Rule::COMMENT => {
+                        debug!("package comment {:?}", inner);
+                        current_package.collect(parse_comment(&inner));
+                    }
                     r => unreachable!("{:?}: {:?}", r, inner),
                 }
             }
@@ -65,16 +72,16 @@ impl PackageBuilder
 
 impl ProtobufItemBuilder
 {
-    pub fn parse(p: Pair<Rule>) -> Self
+    pub fn parse(p: Pair<Rule>, collector: &mut dyn CommentCollector) -> Self
     {
         let pair = p.into_inner().next().unwrap();
         match pair.as_rule() {
-            Rule::message => {
-                ProtobufItemBuilder::Type(ProtobufTypeBuilder::Message(MessageBuilder::parse(pair)))
-            }
-            Rule::enum_ => {
-                ProtobufItemBuilder::Type(ProtobufTypeBuilder::Enum(EnumBuilder::parse(pair)))
-            }
+            Rule::message => ProtobufItemBuilder::Type(ProtobufTypeBuilder::Message(
+                MessageBuilder::parse(pair, collector),
+            )),
+            Rule::enum_ => ProtobufItemBuilder::Type(ProtobufTypeBuilder::Enum(
+                EnumBuilder::parse(pair, collector),
+            )),
             Rule::service => ProtobufItemBuilder::Service(ServiceBuilder::parse(pair)),
             r => unreachable!("{:?}: {:?}", r, pair),
         }
@@ -83,10 +90,16 @@ impl ProtobufItemBuilder
 
 impl MessageBuilder
 {
-    pub fn parse(p: Pair<Rule>) -> Self
+    pub fn parse(p: Pair<Rule>, collector: &mut dyn CommentCollector) -> Self
     {
+        let span = p.as_span();
+        let location = Location {
+            start: span.start(),
+            end: span.end(),
+        };
         let mut inner = p.into_inner();
         let name = inner.next().unwrap().as_str().to_string();
+        debug!("{name} {location:?}");
 
         let mut fields = vec![];
         let mut oneofs = vec![];
@@ -96,15 +109,20 @@ impl MessageBuilder
         for p in body.into_inner() {
             match p.as_rule() {
                 Rule::field => fields.push(FieldBuilder::parse(p)),
-                Rule::enum_ => inner_types.push(InnerTypeBuilder::Enum(EnumBuilder::parse(p))),
-                Rule::message => {
-                    inner_types.push(InnerTypeBuilder::Message(MessageBuilder::parse(p)))
+                Rule::enum_ => {
+                    inner_types.push(InnerTypeBuilder::Enum(EnumBuilder::parse(p, collector)))
                 }
+                Rule::message => inner_types.push(InnerTypeBuilder::Message(
+                    MessageBuilder::parse(p, collector),
+                )),
                 Rule::option => options.push(ProtoOption::parse(p)),
                 Rule::oneof => oneofs.push(OneofBuilder::parse(p)),
                 Rule::mapField => {}
                 Rule::reserved => {} // We don't need to care about reserved field numbers.
                 Rule::emptyStatement => {}
+                Rule::COMMENT => {
+                    collector.collect(parse_comment(&p));
+                }
                 r => unreachable!("{:?}: {:?}", r, p),
             }
         }
@@ -115,14 +133,21 @@ impl MessageBuilder
             oneofs,
             inner_types,
             options,
+            location,
+            ..MessageBuilder::default() // TODO
         }
     }
 }
 
 impl EnumBuilder
 {
-    fn parse(p: Pair<Rule>) -> EnumBuilder
+    fn parse(p: Pair<Rule>, c: &mut dyn CommentCollector) -> Self
     {
+        let span = p.as_span();
+        let location = Location {
+            start: span.start(),
+            end: span.end(),
+        };
         let mut inner = p.into_inner();
         let name = inner.next().unwrap().as_str().to_string();
 
@@ -132,16 +157,29 @@ impl EnumBuilder
         for p in body.into_inner() {
             match p.as_rule() {
                 Rule::enumField => {
-                    let mut inner = p.into_inner();
+                    let mut field_inner = p.into_inner();
+                    let name = field_inner.next().unwrap().as_str().to_string();
+                    let value = parse_int_literal(field_inner.next().unwrap());
+                    let mut field_options = vec![];
+                    for inner in field_inner {
+                        match inner.as_rule() {
+                            Rule::enumValueOption => field_options.push(ProtoOption::parse(inner)),
+                            Rule::COMMENT => debug!("enumField:{name} comment{inner:?}"),
+                            r => unreachable!("{:?}: {:?}", r, inner),
+                        }
+                    }
                     fields.push(EnumField {
-                        name: inner.next().unwrap().as_str().to_string(),
-                        value: parse_int_literal(inner.next().unwrap()),
-                        options: ProtoOption::parse_options(inner),
-                        leading_comment: None,
-                        trailing_comment: None,
+                        name,
+                        value,
+                        options: field_options,
+                        comment: Comment::default(),
                     })
                 }
                 Rule::option => options.push(ProtoOption::parse(p)),
+                Rule::COMMENT => {
+                    debug!("enum {name} comment:{:?}", p);
+                    c.collect(parse_comment(&p));
+                }
                 Rule::emptyStatement => {}
                 r => unreachable!("{:?}: {:?}", r, p),
             }
@@ -151,6 +189,8 @@ impl EnumBuilder
             name,
             fields,
             options,
+            location,
+            ..EnumBuilder::default() // TODO
         }
     }
 }
@@ -168,6 +208,7 @@ impl ServiceBuilder
                 Rule::option => options.push(ProtoOption::parse(p)),
                 Rule::rpc => rpcs.push(RpcBuilder::parse(p)),
                 Rule::emptyStatement => {}
+                Rule::COMMENT => debug!("service {name} comment {:?}", p),
                 r => unreachable!("{:?}: {:?}", r, p),
             }
         }
@@ -184,6 +225,11 @@ impl FieldBuilder
 {
     pub fn parse(p: Pair<Rule>) -> Self
     {
+        let span = p.as_span();
+        let location = Location {
+            start: span.start(),
+            end: span.end(),
+        };
         let mut inner = p.into_inner();
         let multiplicity = match inner.next().unwrap().into_inner().next() {
             Some(t) => {
@@ -211,11 +257,17 @@ impl FieldBuilder
             name,
             number,
             options,
+            location,
         }
     }
 
     pub fn parse_oneof(p: Pair<Rule>) -> Self
     {
+        let span = p.as_span();
+        let location = Location {
+            start: span.start(),
+            end: span.end(),
+        };
         let mut inner = p.into_inner();
         let field_type = parse_field_type(inner.next().unwrap().as_str());
         let name = inner.next().unwrap().as_str().to_string();
@@ -232,6 +284,7 @@ impl FieldBuilder
             name,
             number,
             options,
+            location,
         }
     }
 }
@@ -249,6 +302,7 @@ impl OneofBuilder
                 Rule::option => options.push(ProtoOption::parse(p)),
                 Rule::oneofField => fields.push(FieldBuilder::parse_oneof(p)),
                 Rule::emptyStatement => {}
+                Rule::COMMENT => debug!("oneof {name} comment {:?}", p),
                 r => unreachable!("{:?}: {:?}", r, p),
             }
         }
@@ -297,6 +351,7 @@ impl RpcBuilder
             match p.as_rule() {
                 Rule::option => options.push(ProtoOption::parse(p)),
                 Rule::emptyStatement => {}
+                Rule::COMMENT => debug!("rpc comment {:?}", p),
                 r => unreachable!("{:?}: {:?}", r, p),
             }
         }
@@ -469,6 +524,19 @@ fn parse_string_literal(s: Pair<Rule>) -> Bytes
     output.freeze()
 }
 
+fn parse_comment(p: &Pair<Rule>) -> ProtoComment
+{
+    let span = p.as_span();
+    let (line, col) = p.line_col();
+    ProtoComment {
+        start: span.start(),
+        end: span.end(),
+        text: p.to_string(),
+        line,
+        col,
+    }
+}
+
 #[cfg(test)]
 mod test
 {
@@ -582,11 +650,13 @@ mod test
                                 name: "a".to_string(),
                                 value: 1,
                                 options: vec![],
+                                comment: Comment::default(),
                             },
                             EnumField {
                                 name: "b".to_string(),
                                 value: -1,
                                 options: vec![],
+                                comment: Comment::default(),
                             }
                         ],
                         ..Default::default()
@@ -693,6 +763,7 @@ mod test
                                     value: Constant::Integer(2),
                                 }
                             ],
+                            comment: Comment::default(),
                         }],
                         options: vec![ProtoOption {
                             name: "eOption".to_string(),
