@@ -68,7 +68,7 @@ one_multiplicity = { repeated | optional }
 multiplicity = { one_multiplicity? }
 field = { multiplicity ~ type_ ~ fieldName ~ "=" ~ fieldNumber ~ ( "[" ~ fieldOptions ~ "]" )? ~ ";" ~ TRAILING_COMMENT? }
 fieldOptions = { fieldOption ~ ( "," ~ fieldOption )* }
-fieldOption = { "(" ~ optionName ~ ")" ~ "=" ~ constant }
+fieldOption = { "("? ~ optionName ~ ")"? ~ "=" ~ constant }
 
 oneof = { "oneof" ~ oneofName ~ "{" ~ ( option | oneofField | emptyStatement )* ~ "}" }
 oneofField = { type_ ~ fieldName ~ "=" ~ fieldNumber ~ ( "[" ~ fieldOptions ~ "]" )? ~ ";" }
