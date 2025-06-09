@@ -6,7 +6,7 @@ use pest::{
 
 use super::builder::*;
 use super::*;
-use log::debug;
+use log::trace;
 
 #[derive(pest_derive::Parser)]
 #[grammar = "proto.pest"]
@@ -58,7 +58,7 @@ impl PackageBuilder
                     Rule::extension => {}
                     Rule::EOI => {}
                     Rule::COMMENT => {
-                        debug!("package comment {:?}", inner);
+                        trace!("package comment {:?}", inner);
                         current_package.collect(parse_comment(&inner));
                     }
                     r => unreachable!("{:?}: {:?}", r, inner),
@@ -99,7 +99,7 @@ impl MessageBuilder
         };
         let mut inner = p.into_inner();
         let name = inner.next().unwrap().as_str().to_string();
-        debug!("{name} {location:?}");
+        trace!("{name} {location:?}");
 
         let mut fields = vec![];
         let mut oneofs = vec![];
@@ -164,7 +164,7 @@ impl EnumBuilder
                     for inner in field_inner {
                         match inner.as_rule() {
                             Rule::enumValueOption => field_options.push(ProtoOption::parse(inner)),
-                            Rule::COMMENT => debug!("enumField:{name} comment{inner:?}"),
+                            Rule::COMMENT => trace!("enumField:{name} comment{inner:?}"),
                             r => unreachable!("{:?}: {:?}", r, inner),
                         }
                     }
@@ -177,7 +177,7 @@ impl EnumBuilder
                 }
                 Rule::option => options.push(ProtoOption::parse(p)),
                 Rule::COMMENT => {
-                    debug!("enum {name} comment:{:?}", p);
+                    trace!("enum {name} comment:{:?}", p);
                     c.collect(parse_comment(&p));
                 }
                 Rule::emptyStatement => {}
@@ -208,7 +208,7 @@ impl ServiceBuilder
                 Rule::option => options.push(ProtoOption::parse(p)),
                 Rule::rpc => rpcs.push(RpcBuilder::parse(p)),
                 Rule::emptyStatement => {}
-                Rule::COMMENT => debug!("service {name} comment {:?}", p),
+                Rule::COMMENT => trace!("service {name} comment {:?}", p),
                 r => unreachable!("{:?}: {:?}", r, p),
             }
         }
@@ -302,7 +302,7 @@ impl OneofBuilder
                 Rule::option => options.push(ProtoOption::parse(p)),
                 Rule::oneofField => fields.push(FieldBuilder::parse_oneof(p)),
                 Rule::emptyStatement => {}
-                Rule::COMMENT => debug!("oneof {name} comment {:?}", p),
+                Rule::COMMENT => trace!("oneof {name} comment {:?}", p),
                 r => unreachable!("{:?}: {:?}", r, p),
             }
         }
@@ -351,7 +351,7 @@ impl RpcBuilder
             match p.as_rule() {
                 Rule::option => options.push(ProtoOption::parse(p)),
                 Rule::emptyStatement => {}
-                Rule::COMMENT => debug!("rpc comment {:?}", p),
+                Rule::COMMENT => trace!("rpc comment {:?}", p),
                 r => unreachable!("{:?}: {:?}", r, p),
             }
         }
