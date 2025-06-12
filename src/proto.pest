@@ -1,5 +1,8 @@
 WHITESPACE = _{ " " | "\t" | "\n" | "\r" }
-COMMENT = { "//" ~ (!"\n" ~ ANY)* | "/*" ~ (!"*/" ~ ANY)* ~ "*/" }
+
+single_comment = { "//" ~ (!"\n" ~ ANY)* }
+multi_comment = { "/*" ~ (!"*/" ~ ANY)* ~ "*/" }
+COMMENT = ${ (single_comment ~ ("\n" ~ single_comment)*) | multi_comment }
 BOM = _{ "\u{feff}" }
 
 LEADING_COMMENT = @{ "//" ~ (!"\n" ~ ANY)* | "/*" ~ (!"*/" ~ ANY)* ~ "*/" }

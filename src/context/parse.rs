@@ -105,25 +105,33 @@ impl MessageBuilder
         let mut oneofs = vec![];
         let mut inner_types = vec![];
         let mut options = vec![];
-        let body = inner.next().unwrap();
-        for p in body.into_inner() {
-            match p.as_rule() {
-                Rule::field => fields.push(FieldBuilder::parse(p)),
-                Rule::enum_ => {
-                    inner_types.push(InnerTypeBuilder::Enum(EnumBuilder::parse(p, collector)))
+        for mp in inner {
+            match mp.as_rule() {
+                Rule::messageBody => {
+                    for p in mp.into_inner() {
+                        match p.as_rule() {
+                            Rule::field => fields.push(FieldBuilder::parse(p)),
+                            Rule::enum_ => inner_types
+                                .push(InnerTypeBuilder::Enum(EnumBuilder::parse(p, collector))),
+                            Rule::message => inner_types.push(InnerTypeBuilder::Message(
+                                MessageBuilder::parse(p, collector),
+                            )),
+                            Rule::option => options.push(ProtoOption::parse(p)),
+                            Rule::oneof => oneofs.push(OneofBuilder::parse(p)),
+                            Rule::mapField => {}
+                            Rule::reserved => {} // We don't need to care about reserved field numbers.
+                            Rule::emptyStatement => {}
+                            Rule::COMMENT => {
+                                collector.collect(parse_comment(&p));
+                            }
+                            r => unreachable!("{:?}: {:?}", r, p),
+                        }
+                    }
                 }
-                Rule::message => inner_types.push(InnerTypeBuilder::Message(
-                    MessageBuilder::parse(p, collector),
-                )),
-                Rule::option => options.push(ProtoOption::parse(p)),
-                Rule::oneof => oneofs.push(OneofBuilder::parse(p)),
-                Rule::mapField => {}
-                Rule::reserved => {} // We don't need to care about reserved field numbers.
-                Rule::emptyStatement => {}
                 Rule::COMMENT => {
-                    collector.collect(parse_comment(&p));
+                    debug!("message:{name} comment{mp:?}");
                 }
-                r => unreachable!("{:?}: {:?}", r, p),
+                _ => {}
             }
         }
 
@@ -246,10 +254,14 @@ impl FieldBuilder
         let name = inner.next().unwrap().as_str().to_string();
         let number = parse_uint_literal(inner.next().unwrap());
 
-        let options = match inner.next() {
-            Some(p) => ProtoOption::parse_options(p.into_inner()),
-            None => vec![],
-        };
+        let mut options = vec![];
+        for n in inner {
+            match n.as_rule() {
+                Rule::fieldOptions => options = ProtoOption::parse_options(n.into_inner()),
+                Rule::COMMENT => debug!("field:{name} comment{n:?}"),
+                r => unreachable!("{:?}: {:?}", r, n),
+            }
+        }
 
         FieldBuilder {
             multiplicity,
