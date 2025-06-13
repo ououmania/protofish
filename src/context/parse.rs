@@ -129,7 +129,7 @@ impl MessageBuilder
                     }
                 }
                 Rule::COMMENT => {
-                    debug!("message:{name} comment{mp:?}");
+                    log::debug!("message:{name} comment{mp:?}");
                 }
                 _ => {}
             }
@@ -258,7 +258,7 @@ impl FieldBuilder
         for n in inner {
             match n.as_rule() {
                 Rule::fieldOptions => options = ProtoOption::parse_options(n.into_inner()),
-                Rule::COMMENT => debug!("field:{name} comment{n:?}"),
+                Rule::COMMENT => log::debug!("field:{name} comment{n:?}"),
                 r => unreachable!("{:?}: {:?}", r, n),
             }
         }
